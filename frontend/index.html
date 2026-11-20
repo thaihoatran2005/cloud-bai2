@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8"><title>Ghi chú - 2324802010030</title>
+<style>body{font-family:sans-serif;max-width:600px;margin:30px auto}
+input,textarea{display:block;width:100%;margin:6px 0;padding:6px;box-sizing:border-box}
+.note{border:1px solid #ccc;padding:8px;margin:8px 0}</style></head>
+<body>
+<h2>Ghi chú cá nhân – vps-2324802010030</h2>
+<div id="auth">
+  <input id="u" placeholder="Tên đăng nhập">
+  <input id="p" type="password" placeholder="Mật khẩu">
+  <button onclick="doAuth('register')">Đăng ký</button>
+  <button onclick="doAuth('login')">Đăng nhập</button>
+</div>
+<div id="app" style="display:none">
+  <button onclick="logout()">Đăng xuất</button>
+  <input id="t" placeholder="Tiêu đề">
+  <textarea id="c" placeholder="Nội dung"></textarea>
+  <button onclick="add()">Thêm</button>
+  <div id="list"></div>
+</div>
+<script>
+let notes = [];
+const api = (m, url, body) => fetch(url, {method: m,
+  headers: {"Content-Type": "application/json"},
+  body: body ? JSON.stringify(body) : undefined}).then(r => r.json());
+const esc = s => (s || "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+
+async function doAuth(kind) {
+  const r = await api("POST", "/api/" + kind, {username: u.value, password: p.value});
+  if (r.error) return alert(r.error);
+  if (kind == "register") return alert("Đăng ký xong, hãy đăng nhập");
+  load();
+}
+async function load() {
+  const r = await api("GET", "/api/notes");
+  if (r.error) return;
+  notes = r;
+  document.getElementById("auth").style.display = "none";
+  document.getElementById("app").style.display = "";
+  list.innerHTML = notes.map(n => `<div class="note"><b>${esc(n.title)}</b><p>${esc(n.content)}</p>
+    <button onclick="edit(${n.id})">Sửa</button>
+    <button onclick="del(${n.id})">Xóa</button></div>`).join("");
+}
+async function add() {
+  await api("POST", "/api/notes", {title: t.value, content: c.value});
+  t.value = c.value = ""; load();
+}
+async function edit(id) {
+  const n = notes.find(x => x.id === id);
+  const title = prompt("Tiêu đề", n.title); if (title === null) return;
+  const content = prompt("Nội dung", n.content || "");
+  await api("PUT", "/api/notes/" + id, {title, content}); load();
+}
+async function del(id) { if (confirm("Xóa?")) { await api("DELETE", "/api/notes/" + id); load(); } }
+async function logout() { await api("POST", "/api/logout"); location.reload(); }
+load();
+</script></body></html>
